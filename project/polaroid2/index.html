@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Retro Polaroid Cam MK.II</title>
+    <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 配色方案 */
+            --body-color: #2a2a2a;
+            --body-texture: #1e1e1e;
+            --accent-red: #e84118;
+            --accent-yellow: #fbc531;
+            --metal: #7f8fa6;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            background-color: #111;
+            font-family: 'VT323', monospace; /* 复古电子字体 */
+        }
+
+        /* --- 左侧：相机机身 --- */
+        .camera-body {
+            width: 45%;
+            min-width: 380px;
+            background: linear-gradient(to bottom right, var(--body-color), var(--body-texture));
+            /* 仿皮革纹理 */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23000000' fill-opacity='0.2' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E");
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-right: 8px solid #000;
+            box-shadow: inset -5px 0 15px rgba(0,0,0,0.7);
+            padding: 20px;
+            z-index: 10;
+        }
+
+        /* 装饰性的螺丝钉 */
+        .screw {
+            position: absolute;
+            width: 12px; height: 12px;
+            background: radial-gradient(circle, #ccc 10%, #555 90%);
+            border-radius: 50%;
+            border: 1px solid #222;
+            box-shadow: inset 1px 1px 2px rgba(255,255,255,0.2);
+        }
+        .screw.tl { top: 20px; left: 20px; }
+        .screw.tr { top: 20px; right: 30px; }
+        .screw.bl { bottom: 20px; left: 20px; }
+        .screw.br { bottom: 20px; right: 30px; }
+        /* 螺丝十字槽 */
+        .screw::after { content: '+'; position: absolute; top: -5px; left: 1px; color: #222; font-size: 16px; transform: rotate(45deg); }
+
+        /* 镜头环组件 */
+        .lens-assembly {
+            position: relative;
+            width: 340px; height: 340px;
+            background: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* 镜头反光和纹理 */
+            background: conic-gradient(from 180deg at 50% 50%, #111 0deg, #333 100deg, #111 200deg, #333 300deg, #111 360deg);
+            border: 6px solid #444;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,1);
+        }
+
+        /* 镜头文字 */
+        .lens-text {
+            position: absolute;
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            animation: rotateText 60s linear infinite;
+            pointer-events: none;
+        }
+        .lens-text::before {
+            content: "INSTANT LENS • f=60mm 1:12.7 • AUTO FOCUS •";
+            position: absolute;
+            top: 15px; left: 50%;
+            transform: translateX(-50%);
+            color: #777; font-size: 14px; letter-spacing: 2px;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+        }
+
+        /* 取景器内部 */
+        /* --- 核心修改：取景器内部 (变为圆形) --- */
+        .viewfinder-wrapper {
+            width: 240px;
+            height: 240px;
+            overflow: hidden;    /* 关键：确保视频超出部分被裁切掉 */
+            border-radius: 50%;  /* 关键修改：从 4px 改为 50%，变成正圆形 */
+            border: 10px solid #000; /* 稍微加粗了黑色边框，让镜头感更强 */
+            box-shadow: inset 0 0 20px rgba(0,0,0,1); /* 增加了内部阴影，让镜头看起来更深邃 */
+            position: relative;
+            background: #000;
+            z-index: 2;
+        }
+
+        video#camera-feed {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* 镜像 */
+            filter: sepia(0.4) contrast(1.2) saturate(0.9) brightness(0.9);
+        }
+
+        .flash-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: #fff; opacity: 0; pointer-events: none; z-index: 20;
+        }
+
+        /* 快门按钮区域 */
+        .shutter-container {
+            margin-top: 40px;
+            position: relative;
+        }
+        
+        /* 快门装饰环 */
+        .shutter-ring {
+            position: absolute;
+            top: -5px; left: -5px; right: -5px; bottom: -5px;
+            background: linear-gradient(145deg, #555, #333);
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .shutter-btn {
+            position: relative; z-index: 2;
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            /* 高光泽塑料感 */
+            background: radial-gradient(circle at 30% 30%, #ff7675, var(--accent-red));
+            border: 3px solid #d63031;
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.3), 0 5px 15px rgba(0,0,0,0.4);
+            cursor: pointer; outline: none;
+            transition: all 0.1s;
+        }
+
+        .shutter-btn:active {
+            transform: scale(0.92);
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.4);
+            background: var(--accent-red);
+        }
+
+        .camera-label {
+            margin-top: 20px;
+            color: var(--accent-yellow);
+            font-size: 1.2rem; letter-spacing: 1px;
+            text-shadow: 0 0 5px rgba(251, 197, 49, 0.5);
+        }
+
+        /* --- 右侧：软木照片墙 --- */
+        .gallery-section {
+            flex: 1;
+            /* 软木板纹理 */
+            background-color: #8B4513;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill='%23a0522d' fill-opacity='0.4'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z'/%3E%3C/g%3E%3C/svg%3E");
+            padding: 40px;
+            overflow-y: auto;
+            perspective: 1200px;
+            box-shadow: inset 10px 0 30px rgba(0,0,0,0.6);
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            justify-content: center;
+        }
+
+        /* 拍立得照片成品 */
+        .polaroid {
+            /* 固定尺寸以方便计算下载 */
+            width: 220px;
+            height: 270px;
+            background: #f4f4f4; /* 相纸白 */
+            padding: 12px 12px 50px 12px; /* 经典边距 */
+            box-shadow: 3px 5px 15px rgba(0,0,0,0.5);
+            margin: 25px;
+            position: relative;
+            transition: transform 0.3s, box-shadow 0.3s;
+            /* 初始弹出动画 */
+            animation: eject 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            cursor: pointer; /* 暗示可点击 */
+        }
+
+        /* 鼠标悬停提示下载 */
+        .polaroid:hover {
+            z-index: 100 !important;
+            transform: scale(1.05) rotate(0deg) !important;
+            box-shadow: 5px 10px 25px rgba(0,0,0,0.6);
+        }
+        
+        .polaroid:hover::after {
+            content: 'CLICK TO DOWNLOAD';
+            position: absolute;
+            top: -30px; left: 50%; transform: translateX(-50%);
+            background: var(--accent-yellow); color: #000;
+            padding: 4px 8px; font-size: 12px; border-radius: 4px;
+            white-space: nowrap; pointer-events: none;
+        }
+
+        .photo-img {
+            width: 200px; height: 200px;
+            background: #111; display: block;
+            /* 显影动画 */
+            animation: develop 5s ease-out forwards; 
+        }
+
+        .date-stamp {
+            position: absolute;
+            bottom: 15px; right: 20px;
+            font-family: 'Permanent Marker', cursive; /* 手写字体 */
+            color: #444; font-size: 1.4rem;
+            opacity: 0.7; transform: rotate(-2deg);
+        }
+        
+        /* 顶部装饰条 */
+        .top-stripe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 12px;
+            background: repeating-linear-gradient(45deg, var(--accent-red), var(--accent-red) 10px, var(--accent-yellow) 10px, var(--accent-yellow) 20px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        /* 动画定义 */
+        @keyframes flash-anim { 0% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes rotateText { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes develop {
+            0% { filter: brightness(0.0) sepia(1) blur(3px); opacity: 0.9; }
+            40% { filter: brightness(0.3) sepia(1) blur(2px) contrast(1.5); }
+            70% { filter: brightness(0.7) sepia(0.7) blur(1px); }
+            100% { filter: brightness(1) sepia(0.3) contrast(1.1) blur(0); opacity: 1;}
+        }
+        @keyframes eject {
+            0% { opacity: 0; transform: translateY(200px) scale(0.7) rotateX(-90deg); }
+            100% { opacity: 1; } /* 最终位置由JS设定 */
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 900px) {
+            body { flex-direction: column; overflow: auto; height: auto;}
+            .camera-body { width: 100%; min-width: auto; height: auto; padding: 30px 10px; border-right: none; border-bottom: 8px solid #000;}
+            .lens-assembly { width: 280px; height: 280px; }
+            .viewfinder-wrapper { width: 200px; height: 200px; }
+            .gallery-section { min-height: 60vh; padding: 20px; align-content: flex-start;}
+            .polaroid { margin: 15px; transform: scale(0.9); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="camera-body">
+        <div class="top-stripe"></div>
+        <div class="screw tl"></div><div class="screw tr"></div>
+        <div class="screw bl"></div><div class="screw br"></div>
+
+        <div class="lens-assembly">
+            <div class="lens-text"></div>
+            <div class="viewfinder-wrapper">
+                <video id="camera-feed" autoplay playsinline muted></video>
+                <div class="flash-overlay" id="flash"></div>
+            </div>
+        </div>
+
+        <div class="shutter-container">
+            <div class="shutter-ring"></div>
+            <button class="shutter-btn" onclick="takePhoto()" title="Snap!"></button>
+        </div>
+        <div class="camera-label">POLAROID 600 - VINTAGE EDITION</div>
+    </div>
+
+    <div class="gallery-section" id="gallery">
+        </div>
+
+    <canvas id="process-canvas" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('camera-feed');
+        const gallery = document.getElementById('gallery');
+        const canvas = document.getElementById('process-canvas');
+        const flash = document.getElementById('flash');
+        
+        // 1. 启动摄像头
+        async function startCamera() {
+            try {
+                // 移动端尝试使用后置广角镜头
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: { ideal: "environment" }, width: { ideal: 1080 }, height: { ideal: 1080 } }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                // 确保视频播放后再允许拍照，防止黑屏
+                await video.play();
+            } catch (err) {
+                alert("相机启动失败: " + err.message + "\n请确保使用HTTPS或本地环境，并允许摄像头权限。");
+            }
+        }
+
+        // 2. 拍照功能 (核心逻辑)
+        function takePhoto() {
+            if (!video.srcObject || video.readyState !== 4) return; // 确保视频流就绪
+
+            // 闪光灯动画
+            triggerFlash();
+
+            // 获取正方形截图数据
+            const photoDataURL = captureSquarePhoto();
+
+            // 在墙上创建照片元素
+            createPolaroidOnWall(photoDataURL);
+        }
+
+        // 触发闪光灯
+        function triggerFlash() {
+            flash.style.animation = 'none';
+            flash.offsetHeight; // 强制重绘
+            flash.style.animation = 'flash-anim 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        }
+
+        // 捕获正方形照片流
+        function captureSquarePhoto() {
+            const size = Math.min(video.videoWidth, video.videoHeight);
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // 居中裁剪计算
+            const startX = (video.videoWidth - size) / 2;
+            const startY = (video.videoHeight - size) / 2;
+
+            // 绘制 (镜像翻转以符合自拍习惯)
+            ctx.translate(size, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
+
+            return canvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        // 3. 在墙上生成 DOM 元素
+        function createPolaroidOnWall(imgSrc) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'polaroid';
+            
+            // 随机布局参数
+            const randomRotate = Math.random() * 24 - 12; // -12deg 到 12deg
+            const randomZ = Math.floor(Math.random() * 20);
+            wrapper.style.transform = `rotate(${randomRotate}deg)`;
+            wrapper.style.zIndex = randomZ;
+
+            // 图片本体
+            const img = new Image();
+            img.src = imgSrc;
+            img.className = 'photo-img';
+            
+            // 日期戳
+            const dateStr = getFormattedDate();
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'date-stamp';
+            dateSpan.innerText = dateStr;
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(dateSpan);
+            
+            // --- 核心：绑定下载事件 ---
+            // 点击照片时，调用合成下载函数
+            wrapper.onclick = () => downloadPolaroid(imgSrc, dateStr);
+
+            gallery.prepend(wrapper);
+        }
+
+        // 获取格式化日期
+        function getFormattedDate() {
+            const date = new Date();
+            const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+            return `${months[date.getMonth()]} ${date.getDate()} '${date.getFullYear().toString().substr(-2)}`;
+        }
+
+        // 4. 下载功能：合成最终图片 (Magic happens here)
+        function downloadPolaroid(photoSrc, dateText) {
+            // 定义拍立得的物理尺寸参数 (像素)
+            const pWidth = 440; // 总宽 (两倍于显示的220px以保证清晰度)
+            const pHeight = 540; // 总高
+            const pPaddingX = 24; // 侧边距
+            const pPaddingTop = 24; // 顶边距
+            const photoSize = 392; // 照片区域大小 (440 - 24*2)
+
+            canvas.width = pWidth;
+            canvas.height = pHeight;
+            const ctx = canvas.getContext('2d');
+
+            // A. 绘制相纸底色
+            ctx.fillStyle = '#f4f4f4';
+            ctx.fillRect(0, 0, pWidth, pHeight);
+            // 加一点噪点纹理让它更真实
+            addNoise(ctx, pWidth, pHeight);
+
+            // B. 绘制照片
+            const img = new Image();
+            img.onload = () => {
+                // 绘制带滤镜的照片 (模拟显影后的效果)
+                ctx.filter = 'sepia(0.3) contrast(1.1) brightness(1.05)';
+                ctx.drawImage(img, pPaddingX, pPaddingTop, photoSize, photoSize);
+                ctx.filter = 'none'; // 重置滤镜
+
+                // C. 绘制日期文字
+                ctx.font = "32px 'Permanent Marker', cursive";
+                ctx.fillStyle = "#444444";
+                ctx.textAlign = "right";
+                ctx.globalAlpha = 0.8;
+                // 稍微旋转日期
+                ctx.save();
+                ctx.translate(pWidth - 30, pHeight - 30);
+                ctx.rotate(-2 * Math.PI / 180);
+                ctx.fillText(dateText, 0, 0);
+                ctx.restore();
+
+                // D. 触发下载
+                const finalImageURL = canvas.toDataURL('image/jpeg', 0.95);
+                const link = document.createElement('a');
+                link.download = `Polaroid_${Date.now()}.jpg`;
+                link.href = finalImageURL;
+                link.click();
+            };
+            // 必须设置 src 以触发 onload
+            img.src = photoSrc;
+        }
+
+        // 辅助：给 Canvas 添加噪点
+        function addNoise(ctx, w, h) {
+             const idata = ctx.getImageData(0, 0, w, h);
+             const buffer32 = new Uint32Array(idata.data.buffer);
+             for (let i = 0; i < buffer32.length; i++) {
+                 if (Math.random() < 0.1) {
+                     buffer32[i] = (0xff000000 | (Math.random() * 0x101010)) >>> 0;
+                 }
+             }
+             ctx.putImageData(idata, 0, 0);
+             // 叠加一个半透明白色层柔化噪点
+             ctx.fillStyle = "rgba(244, 244, 244, 0.85)";
+             ctx.fillRect(0,0,w,h);
+        }
+
+        // 初始化
+        window.addEventListener('load', startCamera);
+
+    </script>
+</body>
+</html>

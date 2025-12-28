@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polaroid Camera Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="camera-section">
+            <div class="camera-body">
+                <div class="viewfinder">
+                    <video id="video" autoplay playsinline></video>
+                </div>
+                <div class="camera-controls">
+                    <button id="shutter-btn" class="shutter-btn"></button>
+                    <div class="flash"></div>
+                </div>
+                <div class="lens-ring"></div>
+                <div class="brand-text">Polaroid Retro</div>
+            </div>
+            <div class="instruction">点击快门拍照</div>
+        </div>
+        
+        <div class="gallery-section" id="gallery">
+            <!-- Photos will appear here -->
+        </div>
+    </div>
+    
+    <!-- Hidden canvas for capture -->
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <script src="script.js"></script>
+</body>
+</html>

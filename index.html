@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ayuanxt</title>
+    <!-- Google Fonts: Playfair Display (Titles) & Lora (Body) -->
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Wooden Theme Palette */
+            --wood-dark: #3e2723;
+            --wood-medium: #5d4037;
+            --wood-light: #8d6e63;
+            --paper-bg: #fdfbf7;
+            --paper-border: #d7ccc8;
+            --text-primary: #2d1b15;
+            --text-secondary: #5d4037;
+            --gold-accent: #ffb300;
+            --shadow-depth: 0 10px 20px rgba(0, 0, 0, 0.4);
+            --shadow-inner: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        body {
+            font-family: 'Lora', serif;
+            /* Wood texture background simulation */
+            background-color: var(--wood-dark);
+            background-image: 
+                repeating-linear-gradient(90deg, transparent 0, transparent 40px, rgba(0,0,0,0.1) 40px, rgba(0,0,0,0.1) 41px),
+                linear-gradient(to bottom, #4e342e, #3e2723);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='14' stroke='%23ffb300' stroke-width='2' fill='rgba(255, 179, 0, 0.2)'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23ffb300'/%3E%3C/svg%3E") 16 16, auto;
+        }
+
+        /* Spotlight Overlay */
+        #spotlight {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            background: radial-gradient(circle 300px at var(--x, 50%) var(--y, 50%), transparent 0%, rgba(0, 0, 0, 0.4) 100%);
+            mix-blend-mode: multiply;
+        }
+
+        /* Floating Dust Particles */
+        .dust-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            overflow: hidden;
+        }
+
+        .dust {
+            position: absolute;
+            background: rgba(255, 236, 179, 0.4);
+            border-radius: 50%;
+            animation: float 10s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(50px); opacity: 0; }
+        }
+
+        /* Hero Section / Signboard */
+        header {
+            padding: 60px 20px;
+            text-align: center;
+            position: relative;
+            margin-bottom: 50px;
+            z-index: 10;
+        }
+
+        /* Wooden Signboard Style */
+        .signboard {
+            background-color: #4a3b32;
+            display: inline-block;
+            padding: 20px 60px;
+            border: 4px solid #2d1b15;
+            border-radius: 8px;
+            box-shadow: 
+                0 10px 25px rgba(0,0,0,0.5),
+                inset 0 0 0 2px #8d6e63,
+                inset 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+            transform-origin: top center;
+            /* Animation handled by JS for physics */
+            z-index: 50; /* Ensure signboard is above wall darts */
+        }
+
+        /* 
+        .signboard:hover {
+            animation: swingActive 0.6s ease-in-out infinite alternate;
+        }
+        */
+
+        /* Removed CSS Keyframes for JS Physics control */
+
+        /* Rope for the signboard (Visual Connector) */
+        .rope-left, .rope-right {
+            position: absolute;
+            top: -100px;
+            width: 4px;
+            height: 120px;
+            background: repeating-linear-gradient(45deg, #8d6e63, #8d6e63 5px, #5d4037 5px, #5d4037 10px);
+            z-index: -1;
+        }
+        .rope-left { left: 40px; transform: rotate(5deg); }
+        .rope-right { right: 40px; transform: rotate(-5deg); }
+        .signboard .rope-left, .signboard .rope-right {
+            /* Attaching ropes to the signboard itself so they move with it */
+            top: -400px; 
+            height: 420px;
+            transform-origin: bottom center;
+        }
+
+        /* Screws on the signboard */
+        .signboard::before, .signboard::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #bcaaa4 20%, #5d4037 100%);
+            border-radius: 50%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        .signboard::before { left: 15px; }
+        .signboard::after { right: 15px; }
+
+        h1 {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            color: #ffecb3;
+            text-shadow: 2px 2px 0px #2d1b15;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            margin-top: 10px;
+            font-size: 1.1rem;
+            color: #d7ccc8;
+            font-style: italic;
+            font-weight: 400;
+        }
+
+        /* Container */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 40px;
+            box-sizing: border-box;
+            flex: 1;
+        }
+
+        /* Grid - Shelves Concept */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 40px; /* More space for the shelf look */
+            padding-bottom: 60px;
+        }
+
+        /* Card Styles - "Framed Paper" Look */
+        .card {
+            background-color: var(--paper-bg);
+            position: relative;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            height: 300px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            
+            /* Physical card look */
+            box-shadow: 
+                1px 1px 0 rgba(0,0,0,0.1),
+                5px 5px 15px rgba(0,0,0,0.3);
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            
+            /* Paper texture grain */
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+            
+            animation: swingIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+            transform-origin: top center;
+            /* Removed overflow: hidden to allow darts to stick out */
+            cursor: inherit; /* Inherit custom cursor, do not show pointer */
+        }
+
+        /* "Tape" or "Pin" effect at top */
+        .card::after {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #aa8e69 30%, #5d4037 100%);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+        
+        /* Slight rotation for natural feel */
+        .card:nth-child(even) { transform: rotate(1deg); }
+        .card:nth-child(odd) { transform: rotate(-1deg); }
+
+        /* Removed hover effects to make it look like a static target */
+        /*
+        .card:hover {
+            transform: scale(1.02) rotate(0deg) !important;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            z-index: 5;
+        }
+        */
+
+        /* Card Visual Top - Vintage Gradient */
+        .card-visual {
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-bottom: 2px solid var(--text-primary);
+            overflow: hidden;
+            border-radius: 12px 12px 0 0; /* Manually rounded corners */
+            /* Inner shadow for depth */
+            box-shadow: inset 0 0 20px rgba(62, 39, 35, 0.2);
+        }
+        
+        /* Sepia overlay */
+        .card-visual::before {
+            content: '';
+            position: absolute;
+            top:0; left:0; right:0; bottom:0;
+            background: rgba(93, 64, 55, 0.2); /* Sepia tint */
+            pointer-events: none;
+        }
+
+        .card-initial {
+            font-family: 'Playfair Display', serif;
+            font-size: 5rem;
+            color: rgba(255,255,255,0.8);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            z-index: 1;
+        }
+
+        /* Card Content Bottom */
+        .card-content {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-radius: 0 0 12px 12px; /* Manually rounded corners */
+        }
+
+        /* Dart Styles */
+        .dart {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            pointer-events: none;
+            /* z-index: 9999;  Removed global high z-index */
+            /* Transform origin should be where the tip is relative to the box */
+            /* Our tip is at 0,0 in SVG, which we will center in the div */
+            /* But wait, the SVG viewbox is centered around 0,0 roughly. */
+            /* Let's check SVG: viewBox="-80 -150 160 200". Tip is at 0,0. */
+            /* To make the tip align with the div's top-left (or center), we need to adjust. */
+            /* Current logic centers the 60x60 div on the click point. */
+            /* Inside SVG, tip is at 0,0. SVG center is approx (0, -50). */
+            /* So tip is NOT at SVG center. It's lower. */
+            
+            /* To fix: We need the visual "Tip" to be exactly at the click coordinates. */
+            /* If we position the div centered on click, the center of the div is the click point. */
+            /* We need the SVG's (0,0) to be at the center of the div. */
+            /* In the SVG viewBox="-80 -150 160 200", (0,0) is at: */
+            /* X: 50% (0 is middle of -80 and 80) */
+            /* Y: (0 - (-150)) / 200 = 150/200 = 75% down from top. */
+            
+            /* So, Tip is at 50% X, 75% Y of the SVG image. */
+            /* If we align the div's center to the click, we need to shift the SVG up so its 75% point is at 50%. */
+            /* Or easier: Just offset the div position in JS? No, CSS is cleaner if constant. */
+            
+            /* Let's use transform-origin for rotation to be at the tip (50% 75%) */
+            transform-origin: 50% 75%; 
+            filter: drop-shadow(4px 8px 4px rgba(0,0,0,0.4));
+        }
+
+        /* Apply animation to the SVG inside, not the container, to preserve rotation */
+        .dart-anim-child {
+            animation: throwDart 0.25s ease-in forwards;
+            /* Animation should scale from the tip? Or from the thrower? */
+            /* From thrower (viewer). */
+            transform-origin: 50% 75%;
+        }
+
+        @keyframes throwDart {
+            0% { transform: scale(5) translate(0, 50px); opacity: 0; }
+            70% { transform: scale(1) translate(0, 0); opacity: 1; }
+            100% { transform: scale(1) translate(0, 0); }
+        }
+
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-primary);
+            text-align: center;
+            border-bottom: 1px solid #d7ccc8;
+            padding-bottom: 10px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .card-action {
+            font-family: 'Lora', serif;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 1px solid var(--text-primary);
+            padding: 6px 16px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        /* Removed button hover effect too
+        .card:hover .card-action {
+            background-color: var(--text-primary);
+            color: var(--paper-bg);
+        }
+        */
+
+        /* Loading & Error States */
+        .message {
+            text-align: center;
+            font-size: 1.4rem;
+            color: #d7ccc8;
+            margin-top: 50px;
+            grid-column: 1 / -1;
+            font-style: italic;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: #a1887f;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.2);
+            margin-top: auto;
+        }
+
+        @keyframes swingIn {
+            0% { opacity: 0; transform: rotate(-5deg) translateY(20px); }
+            100% { opacity: 1; transform: rotate(var(--rotation)); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            h1 { font-size: 2rem; }
+            .signboard { padding: 15px 30px; }
+            .grid-container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div id="spotlight"></div>
+    <div class="dust-container" id="dust-container"></div>
+
+    <header>
+        <div class="signboard">
+            <div class="rope-left"></div>
+            <div class="rope-right"></div>
+            <h1>Ayuanxt's Showcase</h1>
+            <div class="subtitle">Est. <span id="year-est">2024</span></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="project-grid" class="grid-container">
+            <div class="message">Unrolling scrolls...</div>
+        </div>
+    </div>
+
+    <footer>
+        &copy; <span id="year"></span> Handcrafted Showcase
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+        document.getElementById('year-est').textContent = new Date().getFullYear();
+
+        // Interaction: Spotlight
+        const spotlight = document.getElementById('spotlight');
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            spotlight.style.setProperty('--x', `${x}px`);
+            spotlight.style.setProperty('--y', `${y}px`);
+            mouseX = x;
+            mouseY = y;
+        });
+
+        // Interaction: Dust Particles
+        const dustContainer = document.getElementById('dust-container');
+        function createDust() {
+            const dust = document.createElement('div');
+            dust.className = 'dust';
+            const size = Math.random() * 4 + 2; // 2-6px
+            dust.style.width = `${size}px`;
+            dust.style.height = `${size}px`;
+            dust.style.left = `${Math.random() * 100}vw`;
+            dust.style.top = `${Math.random() * 100}vh`;
+            dust.style.animationDuration = `${Math.random() * 10 + 10}s`; // 10-20s
+            dust.style.opacity = Math.random() * 0.5;
+            
+            dustContainer.appendChild(dust);
+
+            // Cleanup
+            setTimeout(() => {
+                dust.remove();
+            }, 20000);
+        }
+
+        // Generate dust periodically
+        setInterval(createDust, 500);
+        // Initial dust
+        for(let i=0; i<20; i++) createDust();
+
+        // --- Signboard Physics ---
+        const signboard = document.querySelector('.signboard');
+        let sbAngle = 0;
+        let sbVelocity = 0;
+        let isHovering = false;
+        
+        // Physics Config
+        const SPRING = 0.005;  // Stiffness (Gravity)
+        const DAMPING = 0.99;  // Air resistance (Higher = longer swing)
+        const IDLE_WIND = 0.04;   // Gentle push
+        const ACTIVE_WIND = 1.3; // Strong push (Increased from 0.3)
+        
+        signboard.addEventListener('mouseenter', () => isHovering = true);
+        signboard.addEventListener('mouseleave', () => isHovering = false);
+
+        function updateDartShadows() {
+            const darts = document.querySelectorAll('.dart');
+            darts.forEach(dart => {
+                const shadow = dart.querySelector('.dart-shadow');
+                if (!shadow) return;
+
+                // Get Dart Tip Position in Viewport Coordinates
+                const rect = dart.getBoundingClientRect();
+                // Tip is at 50% X, 75% Y of the 60x60 box
+                const tipX = rect.left + rect.width * 0.5;
+                const tipY = rect.top + rect.height * 0.75;
+
+                // Vector from Mouse (Light) to Dart Tip
+                // Shadow projects AWAY from light.
+                const dx = tipX - mouseX;
+                const dy = tipY - mouseY;
+
+                // Angle of the vector
+                const angleRad = Math.atan2(dy, dx);
+                const angleDeg = angleRad * (180 / Math.PI);
+
+                // Shadow SVG points UP (negative Y) by default (roughly -90deg in standard math).
+                // We want the shadow's "Up" to point along the vector.
+                // So Rotation = VectorAngle - (-90) = VectorAngle + 90.
+                const targetGlobalRotation = angleDeg + 90;
+
+                // Dart Container Rotation
+                const dartRotation = parseFloat(dart.dataset.angle || 0);
+
+                // Apply Rotation to Shadow Container
+                // Shadow is child of Dart (Rotated).
+                // So Local Rotation = Target Global - Dart Rotation
+                const shadowRotation = targetGlobalRotation - dartRotation;
+
+                shadow.style.transform = `rotate(${shadowRotation}deg)`;
+            });
+        }
+
+        function updateSignboardPhysics() {
+            // Update Shadows
+            updateDartShadows();
+
+            // 1. Spring Force (Gravity pulling to center 0)
+            const force = -SPRING * sbAngle;
+            
+            // 2. Wind/Noise Force (To keep it moving)
+            const time = Date.now() / 1000;
+            // A complex wave for natural movement
+            const wave = Math.sin(time) + Math.sin(time * 2.5) * 0.5 + Math.sin(time * 0.5) * 0.5;
+            
+            // Target wind strength based on hover state
+            // We can interpolate this for even smoother transition, but velocity integrates it anyway.
+            const windStrength = isHovering ? ACTIVE_WIND : IDLE_WIND;
+            
+            // Apply forces
+            sbVelocity += force + (wave * windStrength * 0.02);
+            
+            // 3. Friction
+            sbVelocity *= DAMPING;
+            
+            // 4. Integration
+            sbAngle += sbVelocity;
+            
+            // Apply to element
+            if (signboard) {
+                signboard.style.transform = `rotate(${sbAngle}deg)`;
+            }
+            
+            requestAnimationFrame(updateSignboardPhysics);
+        }
+        
+        // Start Physics Loop
+        updateSignboardPhysics();
+
+        // --- Dart Logic ---
+        // Updated SVG: "Inserted" Perspective Dart (Anchored Shadow + Foreshortening) 🎯
+        // We remove the static shadow path from SVG and will add it as a separate element in JS
+        // to control its rotation independently based on light source.
+        const DART_BODY_SVG = `
+        <svg viewBox="-80 -150 160 200" width="100%" height="100%" style="overflow: visible;">
+            <defs>
+                <linearGradient id="barrel3D" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#3E2723;stop-opacity:1" />
+                    <stop offset="30%" style="stop-color:#FFD700;stop-opacity:1" />
+                    <stop offset="60%" style="stop-color:#FFF8E1;stop-opacity:1" />
+                    <stop offset="90%" style="stop-color:#3E2723;stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            
+            <g>
+                 <!-- 2. Barrel: Cone shape (Narrow at tip/wall, wider near camera) -->
+                 <!-- Starts at 0,0 (Insertion point) -->
+                 <path d="M-3 0 L3 0 L8 -50 L-8 -50 Z" fill="url(#barrel3D)" />
+                 
+                 <!-- Grip Rings (Curved downwards to show looking from above/behind) -->
+                 <path d="M-4 -10 Q0 -7 4 -10" fill="none" stroke="#3E2723" stroke-width="1" opacity="0.7"/>
+                 <path d="M-5 -20 Q0 -17 5 -20" fill="none" stroke="#3E2723" stroke-width="1" opacity="0.7"/>
+                 <path d="M-6 -30 Q0 -27 6 -30" fill="none" stroke="#3E2723" stroke-width="1" opacity="0.7"/>
+                 <path d="M-7 -40 Q0 -37 7 -40" fill="none" stroke="#3E2723" stroke-width="1" opacity="0.7"/>
+
+                 <!-- 3. Shaft: Cylinder (Thinner than barrel top) -->
+                 <rect x="-4" y="-80" width="8" height="30" fill="#1a1a1a" />
+                 
+                 <!-- Connector (Barrel to Shaft) -->
+                 <path d="M-8 -50 L8 -50 L4 -55 L-4 -55 Z" fill="#3E2723" />
+
+                 <!-- 4. Flights: Large and "In Your Face" Perspective -->
+                 <!-- Center Spine -->
+                 <rect x="-1" y="-80" width="2" height="50" fill="#D32F2F" />
+                 
+                 <!-- Left Wing (Perspective: Large outer edge, small inner connection) -->
+                 <path d="M-1 -80 L-35 -110 L-10 -130 L-1 -100 Z" fill="#C62828" stroke="#8B0000" stroke-width="0.5"/>
+                 
+                 <!-- Right Wing -->
+                 <path d="M1 -80 L35 -110 L10 -130 L1 -100 Z" fill="#C62828" stroke="#8B0000" stroke-width="0.5"/>
+                 
+                 <!-- Top/Vertical Wing (Spine facing us) -->
+                 <path d="M0 -80 L0 -130" stroke="#B71C1C" stroke-width="2" />
+                 <path d="M0 -130 L-5 -125 L0 -80 L5 -125 Z" fill="#E53935" opacity="0.8" />
+                 
+                 <!-- Shaft Cap / Flight Holder (Closest point to viewer) -->
+                 <circle cx="0" cy="-80" r="3" fill="#000" />
+            </g>
+        </svg>`;
+
+        const DART_SHADOW_SVG = `
+        <svg viewBox="-80 -150 160 200" width="100%" height="100%" style="overflow: visible;">
+            <defs>
+                <filter id="blurShadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+                </filter>
+            </defs>
+            <!-- 1. Shadow: Anchored at (0,0) -->
+            <!-- We draw it pointing STRAIGHT UP (negative Y), so we can rotate it easily -->
+            <path d="M0 0 L-10 -15 L-15 -60 L-5 -70 Z" fill="rgba(0,0,0,0.4)" filter="url(#blurShadow)" />
+        </svg>`;
+
+        // Load existing darts
+        const savedDarts = JSON.parse(localStorage.getItem('showcase_darts') || '[]');
+
+        // Render a single dart
+        function renderDart(dartData, animate = false) {
+            const dart = document.createElement('div');
+            dart.className = 'dart';
+            dart.dataset.angle = dartData.angle; // Store for shadow calculation
+            
+            // Structure: Wrapper (for throw anim) -> Shadow + Body
+            // Shadow is separate so we can rotate it independently of the body/wrapper
+            dart.innerHTML = `
+                <div class="dart-anim-wrapper" style="width:100%; height:100%; position:absolute; top:0; left:0; transform-origin:50% 75%;">
+                    <div class="dart-shadow" style="position:absolute; width:100%; height:100%; transform-origin:50% 75%;">
+                        ${DART_SHADOW_SVG}
+                    </div>
+                    <div class="dart-body" style="position:absolute; width:100%; height:100%;">
+                        ${DART_BODY_SVG}
+                    </div>
+                </div>
+            `;
+            
+            // If animating, apply class to the wrapper
+            if (animate) {
+                const wrapper = dart.querySelector('.dart-anim-wrapper');
+                if (wrapper) wrapper.classList.add('dart-anim-child');
+            }
+
+            if (dartData.parent === 'card') {
+                // Find card by project name
+                const cards = document.querySelectorAll('.card');
+                let targetCard = null;
+                cards.forEach(card => {
+                    if (card.querySelector('.card-title').textContent === dartData.projectName) {
+                        targetCard = card;
+                    }
+                });
+
+                if (targetCard) {
+                    dart.style.left = dartData.x; 
+                    dart.style.top = dartData.y;
+                    dart.style.transform = `rotate(${dartData.angle}deg)`;
+                    dart.style.zIndex = 20; // Above card content
+                    targetCard.appendChild(dart);
+                }
+            } else if (dartData.parent === 'signboard') {
+                // Attached to Signboard
+                const signboard = document.querySelector('.signboard');
+                if (signboard) {
+                    dart.style.left = dartData.x;
+                    dart.style.top = dartData.y;
+                    dart.style.transform = `rotate(${dartData.angle}deg)`;
+                    dart.style.zIndex = 60; // Higher than signboard (50)
+                    signboard.appendChild(dart);
+                }
+            } else {
+                // Attached to body (Wall)
+                dart.style.left = dartData.x + 'px';
+                dart.style.top = dartData.y + 'px';
+                dart.style.transform = `rotate(${dartData.angle}deg)`;
+                dart.style.zIndex = 1; // Lower than signboard (50) and cards
+                document.body.appendChild(dart);
+            }
+        }
+
+        function loadDarts() {
+            // Clear existing darts just in case
+            document.querySelectorAll('.dart').forEach(d => d.remove());
+            savedDarts.forEach(d => renderDart(d, false));
+        }
+
+        // Global Click Listener for Throwing
+        document.addEventListener('click', function(e) {
+            // Check targets
+            const card = e.target.closest('.card');
+            const signboard = e.target.closest('.signboard');
+            
+            // Prevent default navigation immediately if card
+            if (card) {
+                e.preventDefault();
+            }
+
+            // Calculate Position
+            let newDart = {};
+            // Simulating gravity: Dart mostly hits tip-down (Tail UP).
+            // Angle 0 is Tail Up. Vary slightly (-20 to +20 degrees) for natural arc variance.
+            const angle = (Math.random() * 40) - 20; 
+
+            if (card) {
+                const rect = card.getBoundingClientRect();
+                const offsetX = e.clientX - rect.left;
+                const offsetY = e.clientY - rect.top;
+                
+                // Adjust for Tip Position logic if needed, but here we store % of card.
+                // But wait, the renderDart function uses style.left/top directly.
+                // If we want the TIP to be at offsetX/offsetY:
+                // renderDart sets div.style.left = dartData.x.
+                // And div is 60x60.
+                // If we set left=10%, top=10%, the div's TOP-LEFT is at 10%,10%.
+                // The tip is at +30px X, +45px Y inside the div.
+                // So the actual hit point would be (10% + 30px), (10% + 45px). WRONG.
+                
+                // We want the TIP to be at offsetX, offsetY.
+                // So div.left should be offsetX - 30px.
+                // div.top should be offsetY - 45px.
+                
+                // Convert (offsetX - 30) back to percentage of card width?
+                // Yes, to keep it responsive.
+                
+                const divLeft = offsetX - 30;
+                const divTop = offsetY - 45;
+                
+                const xPct = (divLeft / rect.width * 100).toFixed(2) + '%';
+                const yPct = (divTop / rect.height * 100).toFixed(2) + '%';
+                
+                newDart = {
+                    parent: 'card',
+                    projectName: card.querySelector('.card-title').textContent,
+                    x: xPct,
+                    y: yPct,
+                    angle: angle
+                };
+            } else if (signboard) {
+                const rect = signboard.getBoundingClientRect();
+                const offsetX = e.clientX - rect.left;
+                const offsetY = e.clientY - rect.top;
+                
+                const divLeft = offsetX - 30;
+                const divTop = offsetY - 45;
+                
+                const xPct = (divLeft / rect.width * 100).toFixed(2) + '%';
+                const yPct = (divTop / rect.height * 100).toFixed(2) + '%';
+                
+                newDart = {
+                    parent: 'signboard',
+                    x: xPct,
+                    y: yPct,
+                    angle: angle
+                };
+            } else {
+                // Wall hit
+                // Adjusted for Tip Offset:
+                // Div is 60x60. Tip is at 50% X, 75% Y.
+                // We want Tip (30px, 45px inside div) to be at e.pageX, e.pageY.
+                // So Div Left = e.pageX - 30
+                // So Div Top = e.pageY - 45
+                newDart = {
+                    parent: 'body',
+                    x: e.pageX - 30, 
+                    y: e.pageY - 45,
+                    angle: angle
+                };
+            }
+
+            // Render and Animate
+            renderDart(newDart, true);
+
+            // Save
+            savedDarts.push(newDart);
+            localStorage.setItem('showcase_darts', JSON.stringify(savedDarts));
+
+            // Navigation Logic
+            if (card) {
+                setTimeout(() => {
+                    window.location.href = card.href;
+                }, 400); // Wait for animation
+            }
+        }, true); // Capture phase to ensure we get it before other listeners if any
+
+        // Utility: Generate a vintage color palette
+        function generateVintageColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            
+            // Generate hues that are "earthy" or "jewel tones" (Red, Green, Blue, Gold)
+            // Hues: 0-50 (Reds/Oranges), 180-220 (Cyans/Blues), 80-140 (Greens)
+            const hueShift = Math.abs(hash % 360);
+            
+            // High saturation, low lightness for rich vintage look
+            const c1 = `hsl(${hueShift}, 60%, 35%)`;
+            const c2 = `hsl(${(hueShift + 40) % 360}, 60%, 25%)`;
+            
+            return `linear-gradient(135deg, ${c1}, ${c2})`;
+        }
+
+        async function loadProjects() {
+            const grid = document.getElementById('project-grid');
+            
+            try {
+                // Add timestamp to prevent caching of projects.json
+                const response = await fetch(`projects.json?t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const projects = await response.json();
+
+                grid.innerHTML = '';
+
+                if (projects.length === 0) {
+                    grid.innerHTML = '<div class="message">The archives are empty. Please run build.py</div>';
+                    return;
+                }
+
+                projects.forEach((project, index) => {
+                    // Create Card
+                    const card = document.createElement('a');
+                    card.className = 'card';
+                    card.href = project.path;
+                    
+                    // Random slight rotation for natural pinned look (handled in CSS mostly, but we can randomize slightly in JS if needed, 
+                    // but CSS nth-child is cleaner. Let's set a custom property for the animation end state)
+                    const randomRotation = (Math.random() * 4 - 2) + 'deg'; // -2deg to 2deg
+                    card.style.setProperty('--rotation', randomRotation);
+                    
+                    // Stagger animation
+                    card.style.animationDelay = `${index * 0.15}s`;
+
+                    // Generate Visual
+                    const visual = document.createElement('div');
+                    visual.className = 'card-visual';
+                    visual.style.background = generateVintageColor(project.name);
+                    
+                    const initial = document.createElement('span');
+                    initial.className = 'card-initial';
+                    initial.textContent = project.name.charAt(0).toUpperCase();
+                    visual.appendChild(initial);
+
+                    // Content
+                    const content = document.createElement('div');
+                    content.className = 'card-content';
+                    
+                    const title = document.createElement('h3');
+                    title.className = 'card-title';
+                    title.textContent = project.name;
+
+                    const footer = document.createElement('div');
+                    footer.className = 'card-footer';
+                    
+                    const action = document.createElement('span');
+                    action.className = 'card-action';
+                    action.innerHTML = 'Open Scroll';
+
+                    footer.appendChild(action);
+                    
+                    content.appendChild(title);
+                    content.appendChild(footer);
+
+                    // Assemble
+                    card.appendChild(visual);
+                    card.appendChild(content);
+                    grid.appendChild(card);
+                });
+
+                // Load stored darts AFTER cards are generated
+                loadDarts();
+
+            } catch (error) {
+                console.error('Error:', error);
+                grid.innerHTML = `<div class="message">Failed to retrieve archives.<br><small>${error.message}</small></div>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadProjects);
+    </script>
+</body>
+</html>
